@@ -46,6 +46,32 @@ class Zend_Log_Filter_MessageTest extends PHPUnit_Framework_TestCase
         $result = PHPUnit_TextUI_TestRunner::run($suite);
     }
 
+    public function testAcceptWithJavascriptStrippingRegexpAndALongString()
+    {
+        $writer = new Zend_Log_Writer_Stream('/tmp/test.log');
+        $filter = new Zend_Log_Filter_Priority(3, '=');
+        $writer->addFilter($filter);
+
+        // Match all not containing "JavaScript"
+        $filter = new Zend_Log_Filter_Message('/^((?!JavaScript).)*$/s');
+        $writer->addFilter($filter);
+
+        $cfg = array('log' => array('memory' => array(
+            'writerName'   => "Mock",
+            'filterName'   => "Message",
+            'filterParams' => array(
+                'regexp'   => "/42/"
+             ),
+        )));
+        $logger = Zend_Log::factory($cfg['log']);
+        $logger->addWriter($writer);
+        $this->assertTrue($logger instanceof Zend_Log);
+        //a too long message segfaults preg_match in Zend/Log/Filter/Message::accept()
+        $msg = str_repeat('F', 10466);
+
+        $logger->log($msg, 3);
+    }
+
     public function testMessageFilterRecognizesInvalidRegularExpression()
     {
         try {

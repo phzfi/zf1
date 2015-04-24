@@ -80,6 +80,12 @@ class Zend_Log_Filter_Message extends Zend_Log_Filter_Abstract
      */
     public function accept($event)
     {
-        return preg_match($this->_regexp, $event['message']) > 0;
+//        if (function_exists('mb_ereg_match')
+//            mb_internal_encoding('UTF-8');
+//            return mb_ereg_match($this->_regexp, $event['message']);
+//	} else {
+            //this causes segfault
+            return preg_match($this->_regexp, $event['message']) > 0;
+//        }
     }
 }
