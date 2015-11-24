@@ -15,7 +15,7 @@
  * @category   Zend
  * @package    Zend_Log
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @version    $Id$
  */
@@ -43,9 +43,6 @@ require_once 'Zend/Mail/Transport/Exception.php';
 /** Zend_View_Exception */
 require_once 'Zend/View/Exception.php';
 
-/** For some reason these classed have to be manually loaded, because PHPUnit fails to autoload them */
-require_once 'PHPUnit/Framework/MockObject/Stub/Exception.php';
-
 /** Zend_Mail_Transport_Abstract */
 require_once 'Zend/Mail/Transport/Abstract.php';
 
@@ -54,7 +51,7 @@ require_once 'Zend/Mail/Transport/Abstract.php';
  * @category   Zend
  * @package    Zend_Log
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Log
  */

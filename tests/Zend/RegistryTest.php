@@ -15,7 +15,7 @@
  * @category   Zend
  * @package    Zend_Registry
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @version    $Id$
  */
@@ -29,7 +29,7 @@ require_once 'Zend/Registry.php';
  * @category   Zend
  * @package    Zend_Registry
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Registry
  */
@@ -125,17 +125,7 @@ class Zend_RegistryTest extends PHPUnit_Framework_TestCase
 
     public function testRegistryArrayObject()
     {
-        $registry = Zend_Registry::getInstance();
-        $registry['emptyArray'] = array();
-        $registry['null'] = null;
-
-        $this->assertTrue(isset($registry['emptyArray']));
-        $this->assertTrue(isset($registry['null']));
-        $this->assertFalse(isset($registry['noIndex']));
-
-        $this->assertTrue(Zend_Registry::isRegistered('emptyArray'));
-        $this->assertTrue(Zend_Registry::isRegistered('null'));
-        $this->assertFalse(Zend_Registry::isRegistered('noIndex'));
+        $this->assertTrue(Zend_Registry::getInstance() instanceof ArrayObject);
     }
 
     public function testRegistryArrayAsProps()

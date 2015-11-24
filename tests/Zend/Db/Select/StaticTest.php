@@ -15,7 +15,7 @@
  * @category   Zend
  * @package    Zend_Db
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @version    $Id$
  */
@@ -31,7 +31,7 @@ require_once 'Zend/Db/Select/TestCommon.php';
  * @category   Zend
  * @package    Zend_Db
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Zend_Db
  * @group      Zend_Db_Select
@@ -820,4 +820,195 @@ class Zend_Db_Select_StaticTest extends Zend_Db_Select_TestCommon
     {
         return 'Static';
     }
+
+    public function testSqlInjectionWithOrder()
+    {
+        $select = $this->_db->select();
+        $select->from(array('p' => 'products'))->order('MD5(1);select');
+        $this->assertEquals('SELECT "p".* FROM "products" AS "p" ORDER BY "MD5(1);select" ASC', $select->assemble());
+
+        $select = $this->_db->select();
+        $select->from(array('p' => 'products'))->order('name;select;MD5(1)');
+        $this->assertEquals('SELECT "p".* FROM "products" AS "p" ORDER BY "name;select;MD5(1)" ASC', $select->assemble());
+
+        $select = $this->_db->select();
+        $select->from(array('p' => 'products'))->order('MD5(1);drop table products; -- )');
+        $this->assertEquals('SELECT "p".* FROM "products" AS "p" ORDER BY "MD5(1);drop table products; -- )" ASC', $select->assemble());
+    }
+
+    public function testSqlInjectionWithGroup()
+    {
+        $select = $this->_db->select();
+        $select->from(array('p' => 'products'))->group('ABS("weight")');
+        $this->assertEquals('SELECT "p".* FROM "products" AS "p" GROUP BY ABS("weight")', $select->assemble());
+
+        $select = $this->_db->select();
+        $select->from(array('p' => 'products'))->group('MD5(1); drop table products; -- )');
+        $this->assertEquals('SELECT "p".* FROM "products" AS "p" GROUP BY "MD5(1); drop table products; -- )"', $select->assemble());
+    }
+
+    public function testSqlInjectionInColumn()
+    {
+        $select = $this->_db->select();
+        $select->from(array('p' => 'products'), array('MD5(1); drop table products; -- )'));
+        $this->assertEquals('SELECT "p"."MD5(1); drop table products; -- )" FROM "products" AS "p"', $select->assemble());
+    }
+
+    public function testIfInColumn()
+    {
+        $select = $this->_db->select();
+        $select->from('table1', '*');
+        $select->join(array('table2'),
+                      'table1.id = table2.id',
+                      array('bar' => 'IF(table2.id IS NOT NULL, 1, 0)'));
+        $this->assertEquals("SELECT \"table1\".*, IF(table2.id IS NOT NULL, 1, 0) AS \"bar\" FROM \"table1\"\n INNER JOIN \"table2\" ON table1.id = table2.id", $select->assemble());
+    }
+
+    public function testNestedIfInColumn()
+    {
+        $select = $this->_db->select();
+        $select->from('table1', '*');
+        $select->join(array('table2'),
+            'table1.id = table2.id',
+            array('bar' => 'IF(table2.id IS NOT NULL, IF(table2.id2 IS NOT NULL, 1, 2), 0)'));
+        $this->assertEquals("SELECT \"table1\".*, IF(table2.id IS NOT NULL, IF(table2.id2 IS NOT NULL, 1, 2), 0) AS \"bar\" FROM \"table1\"\n INNER JOIN \"table2\" ON table1.id = table2.id", $select->assemble());
+    }
+
+    public function testDeepNestedIfInColumn()
+    {
+        $select = $this->_db->select();
+        $select->from('table1', '*');
+        $select->join(array('table2'),
+            'table1.id = table2.id',
+            array('bar' => 'IF(table2.id IS NOT NULL, IF(table2.id2 IS NOT NULL, SUM(1), 2), 0)'));
+        $this->assertEquals("SELECT \"table1\".*, IF(table2.id IS NOT NULL, IF(table2.id2 IS NOT NULL, SUM(1), 2), 0) AS \"bar\" FROM \"table1\"\n INNER JOIN \"table2\" ON table1.id = table2.id", $select->assemble());
+    }
+
+    public function testNestedUnbalancedParenthesesInColumn()
+    {
+        $select = $this->_db->select();
+        $select->from('table1', '*');
+        $select->join(array('table2'),
+            'table1.id = table2.id',
+            array('bar' => 'IF(SUM()'));
+        $this->assertEquals("SELECT \"table1\".*, \"table2\".\"IF(SUM()\" AS \"bar\" FROM \"table1\"\n INNER JOIN \"table2\" ON table1.id = table2.id", $select->assemble());
+    }
+
+    public function testNestedIfInGroup()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->group('IF(p.id IS NOT NULL, IF(p.id2 IS NOT NULL, SUM(1), 2), 0)');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" GROUP BY IF(p.id IS NOT NULL, IF(p.id2 IS NOT NULL, SUM(1), 2), 0)';
+        $this->assertEquals($expected, $select->assemble());
+    }
+
+    public function testUnbalancedParenthesesInGroup()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->group('IF(SUM() ASC');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" GROUP BY "IF(SUM() ASC"';
+        $this->assertEquals($expected, $select->assemble());
+    }
+
+    /**
+     * @group ZF-378
+     */
+    public function testOrderOfSingleFieldWithDirection()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order('productId DESC');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY "productId" DESC';
+        $this->assertEquals($expected, $select->assemble(),
+            'Order direction of field failed');
+    }
+
+    /**
+     * @group ZF-378
+     */
+    public function testOrderOfMultiFieldWithDirection()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order(array ('productId DESC', 'userId ASC'));
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY "productId" DESC, "userId" ASC';
+        $this->assertEquals($expected, $select->assemble(),
+            'Order direction of field failed');
+    }
+
+    /**
+     * @group ZF-378
+     */
+    public function testOrderOfMultiFieldButOnlyOneWithDirection()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order(array ('productId', 'userId DESC'));
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY "productId" ASC, "userId" DESC';
+        $this->assertEquals($expected, $select->assemble(),
+            'Order direction of field failed');
+    }
+
+    /**
+     * @group ZF-378
+     * @group ZF-381
+     */
+    public function testOrderOfConditionalFieldWithDirection()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order('IF("productId" > 5,1,0) ASC');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY IF("productId" > 5,1,0) ASC';
+        $this->assertEquals($expected, $select->assemble(),
+            'Order direction of field failed');
+    }
+
+    public function testOrderOfDeepConditionalField()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order('IF(p.id IS NOT NULL, IF(p.id2 IS NOT NULL, SUM(1), 2), 0)');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY IF(p.id IS NOT NULL, IF(p.id2 IS NOT NULL, SUM(1), 2), 0) ASC';
+        $this->assertEquals($expected, $select->assemble());
+    }
+
+    public function testOrderOfDeepUnbalancedConditionalField()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order('IF(SUM()');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY "IF(SUM()" ASC';
+        $this->assertEquals($expected, $select->assemble());
+    }
+
+    public function testOrderOfDeepConditionalFieldWithDirection()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order('IF(p.id IS NOT NULL, IF(p.id2 IS NOT NULL, SUM(1), 2), 0) ASC');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY IF(p.id IS NOT NULL, IF(p.id2 IS NOT NULL, SUM(1), 2), 0) ASC';
+        $this->assertEquals($expected, $select->assemble());
+    }
+
+    public function testOrderOfDeepUnbalancedConditionalFieldWithDirection()
+    {
+        $select = $this->_db->select();
+        $select->from(array ('p' => 'product'))
+            ->order('IF(SUM() ASC');
+
+        $expected = 'SELECT "p".* FROM "product" AS "p" ORDER BY "IF(SUM()" ASC';
+        $this->assertEquals($expected, $select->assemble());
+    }
+
 }

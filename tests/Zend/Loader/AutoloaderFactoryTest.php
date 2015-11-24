@@ -15,7 +15,7 @@
  * @category   Zend
  * @package    Zend_Loader
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 
@@ -27,10 +27,6 @@ if (!defined('PHPUnit_MAIN_METHOD')) {
  * Preload a number of classes to ensure they're available once we've disabled
  * other autoloaders.
  */
-require_once 'PHPUnit/Framework/Constraint/IsEqual.php';
-require_once 'PHPUnit/Framework/Constraint/IsInstanceOf.php';
-require_once 'PHPUnit/Framework/Constraint/IsNull.php';
-require_once 'PHPUnit/Framework/Constraint/IsTrue.php';
 require_once 'Zend/Loader/AutoloaderFactory.php';
 require_once 'Zend/Loader/ClassMapAutoloader.php';
 require_once 'Zend/Loader/StandardAutoloader.php';
@@ -38,12 +34,18 @@ require_once 'Zend/Loader/StandardAutoloader.php';
 /**
  * @package    Zend_Loader
  * @subpackage UnitTests
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  * @group      Loader
  */
 class Zend_Loader_AutoloaderFactoryTest extends PHPUnit_Framework_TestCase
 {
+    public static function main()
+    {
+        $suite  = new PHPUnit_Framework_TestSuite(__CLASS__);
+        $result = PHPUnit_TextUI_TestRunner::run($suite);
+    }
+
     public function setUp()
     {
         // Store original autoloaders
@@ -54,7 +56,7 @@ class Zend_Loader_AutoloaderFactoryTest extends PHPUnit_Framework_TestCase
             $this->loaders = array();
         }
 
-        // Clear out other autoloaders to ensure those being tested are at the 
+        // Clear out other autoloaders to ensure those being tested are at the
         // top of the stack
         foreach ($this->loaders as $loader) {
             spl_autoload_unregister($loader);
@@ -108,7 +110,7 @@ class Zend_Loader_AutoloaderFactoryTest extends PHPUnit_Framework_TestCase
         }
         include dirname(__FILE__) . '/_files/InvalidInterfaceAutoloader.php';
         Zend_Loader_AutoloaderFactory::factory(array(
-            'InvalidInterfaceAutoloader' => array()            
+            'InvalidInterfaceAutoloader' => array()
         ));
     }
 
